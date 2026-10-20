@@ -1,0 +1,1600 @@
+<title>Sugbo Guide Bot</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: jeepney-signboard header over a two-pane workspace, chat left, route board right; stacks on phones. */
+:root{
+  --bg:#edf3f2; --surface:#ffffff; --surface-2:#e3ecea; --ink:#112a2c; --muted:#4d6667; --line:#cbdad8;
+  --sign:#f3b81a; --sign-ink:#1a1405; --sea:#0b6a70; --north:#1d5fa8; --south:#c2502e; --metro:#5b4a8f; --leaf:#2f7a3a;
+  --user:#0b6a70; --user-ink:#ffffff;
+  --display:"Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --body:"Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono:"JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1617; --surface:#132224; --surface-2:#1a2d30; --ink:#e3eeed; --muted:#93abab; --line:#28403f;
+  --sign:#f3b81a; --sign-ink:#1a1405; --sea:#4fc0c3; --north:#7fb0f0; --south:#f08c6a; --metro:#b3a3e8; --leaf:#7ccb84;
+  --user:#1e6e72; --user-ink:#f2fbfb; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1617; --surface:#132224; --surface-2:#1a2d30; --ink:#e3eeed; --muted:#93abab; --line:#28403f;
+  --sign:#f3b81a; --sign-ink:#1a1405; --sea:#4fc0c3; --north:#7fb0f0; --south:#f08c6a; --metro:#b3a3e8; --leaf:#7ccb84;
+  --user:#1e6e72; --user-ink:#f2fbfb; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:16px 24px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+
+/* signboard */
+.sign{background:var(--sign);color:var(--sign-ink);border-radius:6px;padding:12px 18px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 20px;
+  box-shadow:inset 0 0 0 3px var(--sign-ink), inset 0 0 0 5px var(--sign)}
+.sign h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,5vw,44px);letter-spacing:.04em;margin:0;line-height:1;text-transform:uppercase}
+.sign h1 small{font-size:.45em;letter-spacing:.12em;font-weight:700;display:block;margin-top:4px}
+.route{font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:.1em;text-transform:uppercase;display:flex;flex-wrap:wrap;gap:4px 12px}
+.route span+span::before{content:"·";margin-right:12px}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+
+/* chat */
+.chat{background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;min-width:0;height:min(78vh,760px);min-height:520px}
+.chat-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.chat-head b{font-size:15px}
+.toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.log{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.msg{max-width:88%;min-width:0;display:flex;flex-direction:column;gap:6px}
+.msg.user{align-self:flex-end}
+.bubble{padding:10px 14px;border-radius:12px;white-space:normal;overflow-wrap:anywhere}
+.user .bubble{background:var(--user);color:var(--user-ink);border-bottom-right-radius:4px}
+.bot .bubble{background:var(--surface-2);border-bottom-left-radius:4px}
+.bubble p{margin:0 0 6px}.bubble p:last-child{margin:0}
+.bubble ul{margin:4px 0 6px;padding-left:20px}.bubble li{margin:2px 0}
+.bubble .t{font-weight:700;display:block;margin-bottom:4px}
+.meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pill{border:1px solid currentColor;border-radius:999px;padding:1px 8px;font-weight:500}
+.pill.kb{color:var(--leaf)}.pill.cache{color:var(--sea)}.pill.llm{color:var(--south)}.pill.fallback{color:var(--muted)}
+.related{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:inherit;font-size:13px;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:4px 11px;cursor:pointer}
+.chip:hover{border-color:var(--sea);color:var(--sea)}
+.chip:focus-visible,.tab:focus-visible,.send:focus-visible,.ask:focus-visible{outline:2px solid var(--sea);outline-offset:2px}
+.quick{display:flex;gap:6px;padding:10px 16px 0;overflow-x:auto;scrollbar-width:thin}
+.quick .chip{white-space:nowrap}
+form{display:flex;gap:8px;padding:12px 16px 16px}
+form input{flex:1;min-width:0;font:inherit;padding:11px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+form input:focus{outline:2px solid var(--sea);outline-offset:0;border-color:transparent}
+.send{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:.08em;text-transform:uppercase;background:var(--sign);color:var(--sign-ink);border:0;border-radius:8px;padding:0 18px;cursor:pointer}
+
+/* board */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:10px;min-width:0;display:flex;flex-direction:column}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--line)}
+.tab{font-family:var(--display);font-weight:700;font-size:17px;letter-spacing:.08em;text-transform:uppercase;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:12px 4px 9px;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--c)}
+.panel{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;max-height:min(70vh,700px);overflow-y:auto}
+.panel h2{font-family:var(--display);font-size:22px;letter-spacing:.04em;margin:0;text-transform:uppercase;color:var(--c)}
+.panel .lede{margin:0;color:var(--muted);font-size:14px}
+.stop{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--line)}
+.stop div{min-width:0}
+.stop b{display:block;font-size:15px}
+.stop span{font-size:13px;color:var(--muted)}
+.ask{font:inherit;font-size:13px;background:none;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:4px 10px;cursor:pointer;flex:none}
+.ask:hover{border-color:var(--c);color:var(--c)}
+.prod{border-top:1px solid var(--line);padding:10px 0;display:flex;flex-direction:column;gap:4px}
+.prod-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.prod b{font-size:15px}
+.kind{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--leaf)}
+.prod dl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0;font-size:13px}
+.prod dt{color:var(--muted)}.prod dd{margin:0;min-width:0}
+.note{font-size:12.5px;color:var(--muted);margin:0}
+.arch{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:760px){.arch{grid-template-columns:1fr 1fr}}
+@media (max-width:420px){.arch{grid-template-columns:1fr}}
+.arch div{min-width:0}
+.arch b{font-family:var(--display);font-size:17px;letter-spacing:.06em;text-transform:uppercase;display:block}
+.arch p{margin:2px 0 0;font-size:13.5px;color:var(--muted)}
+.foot{font-size:12.5px;color:var(--muted);margin:0}
+@media (prefers-reduced-motion:no-preference){.msg{animation:in .18s ease-out}@keyframes in{from{transform:translateY(4px);opacity:.4}to{transform:none;opacity:1}}}
+</style>
+
+<div class="wrap">
+  <header class="sign">
+    <h1>Sugbo Guide<small>Cebu tourism bot · prototype</small></h1>
+    <div class="route" aria-label="Coverage"><span>North</span><span>South</span><span>City</span><span>Pasalubong</span></div>
+  </header>
+
+  <div class="grid">
+    <section class="chat" aria-label="Chat">
+      <div class="chat-head">
+        <b>Ask anything about Cebu</b>
+        <label class="toggle"><input type="checkbox" id="showRoute" checked> Show routing</label>
+      </div>
+      <div class="log" id="log" aria-live="polite"></div>
+      <div class="quick" id="quick"></div>
+      <form id="f" autocomplete="off">
+        <input id="q" placeholder="e.g. How do I get to Bantayan?" aria-label="Your question">
+        <button class="send" type="submit">Ask</button>
+      </form>
+    </section>
+
+    <aside class="board" aria-label="Explore">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="panel" id="panel" role="tabpanel"></div>
+    </aside>
+  </div>
+
+  <section class="arch" aria-label="How it answers">
+    <div><b>1 · Cache</b><p>Repeated questions return from memory in under a millisecond.</p></div>
+    <div><b>2 · Instant KB</b><p>Confident matches answer straight from the curated knowledge base. No model call.</p></div>
+    <div><b>3 · Local LLM</b><p>Uncertain questions go to a small local model with the top 3 entries as context.</p></div>
+    <div><b>4 · Fallback</b><p>Off-topic questions get a guided reply instead of a made-up answer.</p></div>
+  </section>
+  <p class="foot">Prototype. Fares, fees, and schedules are approximate (knowledge base dated <span id="ver"></span>) and should be verified locally. In this browser demo, step 3 shows which entries would be sent to the local model.</p>
+</div>
+
+<script>// Fast retrieval router. Same logic is mirrored in backend/router.py.
+// Scores KB entries with IDF-weighted field matching plus keyword-phrase hits.
+(function (root) {
+  const STOP = new Set("a an the is are am i me my we you your to of in on at for and or do does did can could how what where when which who why it this that there be with from go get to near about any some please tell know want like ba ang sa ug ni nga ko mo".split(" "));
+
+  function norm(s) {
+    return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+  }
+  function stem(t) {
+    if (t.length > 4 && t.endsWith("es")) return t.slice(0, -2);
+    if (t.length > 3 && t.endsWith("s")) return t.slice(0, -1);
+    return t;
+  }
+  function toks(s) {
+    return norm(s).split(/[\s-]+/).filter(t => t && !STOP.has(t)).map(stem);
+  }
+
+  function build(kb) {
+    const docs = kb.entries.filter(e => e.id !== "fallback").map(e => ({
+      e,
+      title: new Set(toks(e.title)),
+      kw: new Set(e.keywords.flatMap(toks)),
+      q: new Set(e.questions.flatMap(toks)),
+      phrases: e.keywords.map(norm).filter(k => k.includes(" ") || k.length >= 4),
+    }));
+    const df = new Map();
+    docs.forEach(d => new Set([...d.title, ...d.kw, ...d.q]).forEach(t => df.set(t, (df.get(t) || 0) + 1)));
+    const N = docs.length;
+    const idf = t => Math.log(1 + N / (df.get(t) || N));
+    const fallback = kb.entries.find(e => e.id === "fallback");
+    return { docs, idf, fallback };
+  }
+
+  function score(index, query) {
+    const qn = " " + norm(query) + " ";
+    const qt = [...new Set(toks(query))];
+    const wantsNorth = /\bnorth|amihanan\b/.test(qn), wantsSouth = /\bsouth|habagatan\b/.test(qn);
+    const out = index.docs.map(d => {
+      let s = 0;
+      for (const t of qt) {
+        const w = index.idf(t);
+        if (d.kw.has(t)) s += 3 * w;
+        else if (d.title.has(t)) s += 2 * w;
+        else if (d.q.has(t)) s += 1 * w;
+      }
+      for (const p of d.phrases) if (p.includes(" ") && qn.includes(" " + p + " ")) s += 4;
+      if (wantsNorth && d.e.region === "north") s += 1.5;
+      if (wantsSouth && d.e.region === "south") s += 1.5;
+      if (d.e.region === "north" && wantsSouth && !wantsNorth) s -= 2;
+      if (d.e.region === "south" && wantsNorth && !wantsSouth) s -= 2;
+      return { entry: d.e, score: s };
+    }).sort((a, b) => b.score - a.score);
+    return out;
+  }
+
+  // Routes: "kb" (confident, answer instantly), "llm" (some signal, a local LLM would compose
+  // an answer from the top chunks), "fallback" (nothing relevant).
+  function route(index, query, opts = {}) {
+    const hi = opts.hi ?? 6, lo = opts.lo ?? 2.5;
+    const ranked = score(index, query);
+    const top = ranked[0];
+    const second = ranked[1];
+    const related = ranked.slice(1, 4).filter(r => r.score >= lo).map(r => r.entry);
+    if (!top || top.score < lo) return { route: "fallback", entry: index.fallback, score: top ? top.score : 0, related: [] };
+    const margin = second ? top.score - second.score : top.score;
+    const routeName = top.score >= hi || margin >= 3 ? "kb" : "llm";
+    return { route: routeName, entry: top.entry, score: top.score, related, context: ranked.slice(0, 3).map(r => r.entry) };
+  }
+
+  root.SugboRouter = { build, route, score, norm };
+  if (typeof module !== "undefined") module.exports = root.SugboRouter;
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+const KB = {
+ "name": "Sugbo Guide Cebu KB",
+ "verified": "2026-10",
+ "entries": [
+  {
+   "id": "greet",
+   "region": "general",
+   "category": "Basics",
+   "title": "Greeting",
+   "keywords": [
+    "hello",
+    "hi",
+    "hey",
+    "maayong",
+    "kumusta",
+    "good morning",
+    "good day",
+    "start"
+   ],
+   "questions": [
+    "Hi",
+    "Maayong buntag",
+    "Hello, who are you?"
+   ],
+   "answer": "Maayong adlaw! I'm Sugbo Guide, your Cebu travel helper.\nAsk me about North Cebu (Bantayan, Malapascua, Camotes), South Cebu (Oslob, Moalboal, Kawasan, Osmeña Peak, Simala), the city, getting around, or local products and pasalubong."
+  },
+  {
+   "id": "best-time",
+   "region": "general",
+   "category": "Basics",
+   "title": "Best time to visit",
+   "keywords": [
+    "best",
+    "time",
+    "season",
+    "month",
+    "weather",
+    "rainy",
+    "dry",
+    "summer",
+    "when"
+   ],
+   "questions": [
+    "When is the best time to visit Cebu?",
+    "What is the weather like?"
+   ],
+   "answer": "Dry season, roughly December to May, is the easiest time to visit. March to May is hottest and best for beaches and island hopping.\nJune to November is the rainy and typhoon season. Trips still run, but ferries and boat tours get cancelled when a storm signal is raised.\nExpect big crowds and higher prices during Sinulog (January), Holy Week, and Christmas."
+  },
+  {
+   "id": "typhoon",
+   "region": "general",
+   "category": "Safety",
+   "title": "Typhoons and cancelled ferries",
+   "keywords": [
+    "typhoon",
+    "storm",
+    "signal",
+    "bagyo",
+    "cancelled",
+    "cancel",
+    "ferry",
+    "suspended",
+    "pagasa",
+    "coast guard"
+   ],
+   "questions": [
+    "Are ferries cancelled during a typhoon?",
+    "What if there is a storm signal?"
+   ],
+   "answer": "When PAGASA raises a Tropical Cyclone Wind Signal, the Philippine Coast Guard usually suspends sea trips for small boats and sometimes ferries.\nCheck PAGASA and the Coast Guard (PCG Central Visayas) pages before leaving for Bantayan, Malapascua, Camotes, or Sumilon.\nKeep a buffer day before your flight if your itinerary includes an island."
+  },
+  {
+   "id": "airport",
+   "region": "metro",
+   "category": "Getting around",
+   "title": "Airport to the city",
+   "keywords": [
+    "airport",
+    "mactan",
+    "mcia",
+    "arrival",
+    "city",
+    "taxi",
+    "grab",
+    "mybus",
+    "transfer"
+   ],
+   "questions": [
+    "How do I get from the airport to Cebu City?",
+    "Is there a bus from Mactan airport?"
+   ],
+   "answer": "Mactan-Cebu International Airport (MCIA) is on Mactan Island, Lapu-Lapu City.\nOptions to the city:\n- MyBus airport route to SM City Cebu and other stops. Cheapest, about PHP 50 to 100 (verify current fare).\n- Yellow airport taxi or white metered taxi. Ask the driver to use the meter.\n- Grab car. Pick up at the designated Grab area.\nTravel time to Cebu City is 30 minutes to over an hour depending on traffic. Use the CCLEX bridge route for the south part of the city."
+  },
+  {
+   "id": "getting-around",
+   "region": "metro",
+   "category": "Getting around",
+   "title": "Getting around Metro Cebu",
+   "keywords": [
+    "jeepney",
+    "jeep",
+    "transport",
+    "commute",
+    "taxi",
+    "grab",
+    "habal",
+    "angkas",
+    "move it",
+    "mybus",
+    "around",
+    "ride"
+   ],
+   "questions": [
+    "How do I get around Cebu City?",
+    "How do jeepneys work?"
+   ],
+   "answer": "- Jeepneys: cheapest. Route codes (like 01K, 04L, 13C) are on the side and front. Base fare is around PHP 13 to 15. Pass the fare forward and say \"Lugar lang\" to get off.\n- Taxi: metered. Make sure the meter is on.\n- Grab: car rides through the Grab app. Motorcycle taxis like Angkas and Move It also operate.\n- MyBus: air-conditioned buses linking the airport, SM City, SM Seaside, and Il Corso.\nTraffic is heavy from 7 to 9 am and 5 to 8 pm, so plan around it."
+  },
+  {
+   "id": "bus-terminals",
+   "region": "general",
+   "category": "Getting around",
+   "title": "North and South bus terminals",
+   "keywords": [
+    "bus",
+    "terminal",
+    "ceres",
+    "north",
+    "south",
+    "province",
+    "provincial"
+   ],
+   "questions": [
+    "Where do I take a bus to the province?",
+    "Which bus terminal for Oslob?"
+   ],
+   "answer": "- Cebu South Bus Terminal (N. Bacalso Ave., Cebu City): buses to Carcar, Simala/Sibonga, Argao, Dalaguete, Oslob, Moalboal, Badian, Santander.\n- Cebu North Bus Terminal (near SM City Cebu, Mandaue side): buses to Danao, Bogo, Hagnaya (for Bantayan), Maya (for Malapascua).\nCeres is the main operator. Air-conditioned buses cost a bit more but are worth it for long trips. Last trips usually leave in the late afternoon, so check before planning a return."
+  },
+  {
+   "id": "money",
+   "region": "general",
+   "category": "Basics",
+   "title": "Money, ATMs, and cash",
+   "keywords": [
+    "money",
+    "atm",
+    "cash",
+    "card",
+    "peso",
+    "exchange",
+    "gcash",
+    "pay",
+    "credit"
+   ],
+   "questions": [
+    "Can I use my card?",
+    "Are there ATMs in Bantayan?",
+    "Where can I exchange money?"
+   ],
+   "answer": "The currency is the Philippine peso (PHP).\nCards and GCash work in malls, hotels, and big restaurants in the city. In provincial towns, islands, markets, and on boats, bring cash.\nATMs exist in Bantayan (Santa Fe and Bantayan town), Moalboal, and Oslob town proper, but they run out of cash on weekends and holidays. Withdraw in the city first.\nMoney changers in SM, Ayala, and Robinsons malls usually give better rates than the airport."
+  },
+  {
+   "id": "sim",
+   "region": "general",
+   "category": "Basics",
+   "title": "SIM cards and internet",
+   "keywords": [
+    "sim",
+    "internet",
+    "data",
+    "wifi",
+    "globe",
+    "smart",
+    "dito",
+    "signal",
+    "load",
+    "esim"
+   ],
+   "questions": [
+    "Where can I buy a SIM card?",
+    "Is there mobile data in the islands?"
+   ],
+   "answer": "Buy a Globe, Smart, or DITO SIM at the airport or any mall. Bring your passport because SIM registration is required. Some carriers also sell eSIMs.\nSignal is good in the city and town centers but weak on some beaches, mountain trails, and small islands. Download offline maps before you go."
+  },
+  {
+   "id": "safety",
+   "region": "general",
+   "category": "Safety",
+   "title": "Safety and emergency numbers",
+   "keywords": [
+    "safe",
+    "safety",
+    "emergency",
+    "police",
+    "hospital",
+    "911",
+    "help",
+    "lost",
+    "scam",
+    "doctor"
+   ],
+   "questions": [
+    "Is Cebu safe?",
+    "What is the emergency number?",
+    "Where is the nearest hospital?"
+   ],
+   "answer": "Cebu is generally friendly and safe for tourists. Use normal city precautions: watch your phone and bag in crowded places like Colon and Carbon Market, and use metered taxis or Grab at night.\nEmergency hotline: 911 (nationwide).\nMajor hospitals in the city include Chong Hua, Cebu Doctors' University Hospital, Perpetual Succour, and Vicente Sotto Memorial Medical Center.\nIf you lose something on a ride, Grab trips can be traced in the app."
+  },
+  {
+   "id": "dress-code",
+   "region": "general",
+   "category": "Culture",
+   "title": "Church dress code and etiquette",
+   "keywords": [
+    "dress",
+    "code",
+    "church",
+    "shorts",
+    "sleeveless",
+    "etiquette",
+    "respect",
+    "culture",
+    "shrine"
+   ],
+   "questions": [
+    "Is there a dress code for churches?",
+    "Can I wear shorts in Simala?"
+   ],
+   "answer": "Churches and shrines, especially Simala Shrine and the Basilica del Santo Niño, expect modest clothing: no shorts, sleeveless tops, or short skirts. Simala lends wraps at the entrance if needed.\nKeep quiet during Mass and ask before photographing people praying.\nFilipinos value politeness. A smile and \"Salamat\" (thank you) go a long way."
+  },
+  {
+   "id": "phrases",
+   "region": "general",
+   "category": "Culture",
+   "title": "Useful Cebuano phrases",
+   "keywords": [
+    "cebuano",
+    "bisaya",
+    "language",
+    "phrase",
+    "speak",
+    "translate",
+    "say",
+    "word",
+    "english"
+   ],
+   "questions": [
+    "What language do they speak in Cebu?",
+    "Teach me some Bisaya phrases"
+   ],
+   "answer": "People speak Cebuano (Bisaya). English is widely understood.\n- Maayong buntag / hapon / gabii: Good morning / afternoon / evening\n- Salamat: Thank you\n- Pila ni?: How much is this?\n- Asa ang ...?: Where is ...?\n- Lugar lang: Please stop here (jeepney)\n- Palihug: Please\n- Lami!: Delicious!\n- Wala ko kasabot: I don't understand"
+  },
+  {
+   "id": "sinulog",
+   "region": "metro",
+   "category": "Events",
+   "title": "Sinulog Festival",
+   "keywords": [
+    "sinulog",
+    "festival",
+    "january",
+    "santo nino",
+    "parade",
+    "fiesta",
+    "event"
+   ],
+   "questions": [
+    "When is Sinulog?",
+    "What is the Sinulog Festival?"
+   ],
+   "answer": "Sinulog is Cebu City's biggest festival, honoring the Santo Niño. The grand parade is held on the third Sunday of January, with novena Masses and events through the weeks before.\nBook hotels months ahead, expect road closures, and keep valuables close in the crowds.\nOther big fiestas: Kadaugan sa Mactan (April, Lapu-Lapu City) and many town fiestas through the year."
+  },
+  {
+   "id": "itinerary-3d",
+   "region": "general",
+   "category": "Planning",
+   "title": "Sample 3-day itinerary",
+   "keywords": [
+    "itinerary",
+    "plan",
+    "days",
+    "3",
+    "three",
+    "schedule",
+    "trip",
+    "first",
+    "time",
+    "suggest",
+    "recommend"
+   ],
+   "questions": [
+    "What is a good 3-day itinerary?",
+    "I have 3 days in Cebu, where should I go?"
+   ],
+   "answer": "A popular 3-day plan:\n- Day 1, City: Magellan's Cross, Basilica del Santo Niño, Fort San Pedro, Taoist Temple, Temple of Leah, sunset at Tops.\n- Day 2, South loop: leave around 4 am for Oslob, then Tumalog Falls, then Kawasan Falls or canyoneering in Badian. Stay in Moalboal.\n- Day 3, Moalboal: sardine run and turtles at Panagsama Beach, Pescador Island hopping, then back to the city.\nIf you prefer white sand and a slower pace, swap Days 2 and 3 for Bantayan Island in the north."
+  },
+  {
+   "id": "budget",
+   "region": "general",
+   "category": "Planning",
+   "title": "Daily budget",
+   "keywords": [
+    "budget",
+    "cost",
+    "expensive",
+    "cheap",
+    "how much",
+    "money",
+    "daily",
+    "backpacker"
+   ],
+   "questions": [
+    "How much should I budget per day?",
+    "Is Cebu expensive?"
+   ],
+   "answer": "Rough daily budgets per person (2026, verify locally):\n- Backpacker: PHP 1,500 to 2,500 (hostel, buses, local food)\n- Mid-range: PHP 3,500 to 6,000 (hotel, some private transport, tours)\n- Comfort: PHP 8,000 and up (resorts, private van)\nAdd tour fees separately, like whale shark watching, canyoneering, and island hopping."
+  },
+  {
+   "id": "food",
+   "region": "general",
+   "category": "Food",
+   "title": "What to eat in Cebu",
+   "keywords": [
+    "eat",
+    "food",
+    "dish",
+    "try",
+    "restaurant",
+    "local",
+    "delicacy",
+    "lami"
+   ],
+   "questions": [
+    "What food should I try in Cebu?",
+    "What is Cebu famous for food?"
+   ],
+   "answer": "Must-try Cebuano food:\n- Lechon: Cebu roast pig, flavored inside so it needs no sauce.\n- Puso: rice cooked in woven coconut leaves.\n- Sutukil: choose fresh seafood, then have it grilled (sugba), in soup (tuwa), or raw in vinegar (kilaw).\n- Ngohiong: Cebuano spring roll.\n- Siomai sa Tisa and tuslob buwa (Pasil) for street food.\n- Sikwate (thick hot chocolate) with puto maya for breakfast.\nAsk me about pasalubong to bring home, too."
+  },
+  {
+   "id": "fallback",
+   "region": "general",
+   "category": "Basics",
+   "title": "Fallback",
+   "keywords": [],
+   "questions": [],
+   "answer": "I'm not sure about that one yet. Try asking about a place (Oslob, Bantayan, Moalboal), a topic (ferries, budget, safety), or local products (dried mangoes, danggit, chicharon)."
+  },
+  {
+   "id": "city-heritage",
+   "region": "metro",
+   "category": "Attractions",
+   "title": "Cebu City heritage sites",
+   "keywords": [
+    "magellan",
+    "cross",
+    "basilica",
+    "santo nino",
+    "fort san pedro",
+    "heritage",
+    "history",
+    "colon",
+    "museum",
+    "city",
+    "downtown",
+    "parian",
+    "casa gorordo",
+    "yap"
+   ],
+   "questions": [
+    "What can I see in Cebu City?",
+    "Where is Magellan's Cross?",
+    "Historical places in Cebu City"
+   ],
+   "answer": "The heritage area downtown is walkable in half a day:\n- Magellan's Cross and the Basilica Minore del Santo Niño, the oldest Catholic church in the country.\n- Fort San Pedro, a Spanish-era fort by the port.\n- Colon Street, the oldest street in the Philippines.\n- Parian District: Yap-San Diego Ancestral House, Casa Gorordo Museum, Heritage of Cebu Monument.\nGo in the morning to beat the heat, and dress modestly for the Basilica."
+  },
+  {
+   "id": "city-uplands",
+   "region": "metro",
+   "category": "Attractions",
+   "title": "Busay uplands: Temple of Leah, Tops, Sirao",
+   "keywords": [
+    "temple of leah",
+    "tops",
+    "sirao",
+    "flower",
+    "garden",
+    "busay",
+    "view",
+    "sunset",
+    "taoist",
+    "mountain",
+    "lahug"
+   ],
+   "questions": [
+    "What is the Temple of Leah?",
+    "Where can I see the city view?",
+    "Sirao flower garden"
+   ],
+   "answer": "The Busay and Sirao highlands are 30 to 45 minutes from Lahug:\n- Temple of Leah: a Roman-style temple built as a love monument, with a good view.\n- Sirao Flower Garden: celosia flower farm, sometimes called the Little Amsterdam of Cebu.\n- Tops Lookout: best city view at sunset.\n- Taoist Temple in Beverly Hills, Lahug.\nHire a taxi, Grab, or habal-habal for a half-day loop since jeepneys don't cover all stops."
+  },
+  {
+   "id": "mactan",
+   "region": "metro",
+   "category": "Attractions",
+   "title": "Mactan Island beaches and Lapu-Lapu Shrine",
+   "keywords": [
+    "mactan",
+    "lapu-lapu",
+    "lapu lapu",
+    "shrine",
+    "beach",
+    "resort",
+    "island hopping",
+    "nalusuan",
+    "hilutungan",
+    "olango"
+   ],
+   "questions": [
+    "What can I do in Mactan?",
+    "Island hopping near the city",
+    "Where is the Lapu-Lapu shrine?"
+   ],
+   "answer": "- Mactan Shrine (Liberty Shrine): the Lapu-Lapu monument marking the 1521 battle.\n- Beach resorts along Maribago and Punta Engaño. Many offer day passes.\n- Island hopping to Nalusuan, Hilutungan, and Pandanon for snorkeling. Boats leave from Mactan, about half a day.\n- Olango Island Wildlife Sanctuary for migratory birds (best around September to March).\n- Guitar workshops in Abuno and Maribago, where Mactan's handmade guitars are made."
+  },
+  {
+   "id": "north-overview",
+   "region": "north",
+   "category": "Overview",
+   "title": "North Cebu overview",
+   "keywords": [
+    "north",
+    "northern",
+    "amihanan",
+    "overview",
+    "where",
+    "places",
+    "visit",
+    "destinations"
+   ],
+   "questions": [
+    "What are the places to visit in North Cebu?",
+    "What's in northern Cebu?"
+   ],
+   "answer": "North Cebu is quieter, with white-sand islands and fresh seafood:\n- Bantayan Island: powdery beaches, Kota Beach, Virgin Island, dried fish and eggs.\n- Malapascua Island: thresher shark diving at dawn.\n- Camotes Islands: Lake Danao, caves, and calm coves.\n- Along the way: Danao, Sogod, Bogo City, San Remigio, and Medellin.\nBuses leave from the Cebu North Bus Terminal. Plan at least two days for any island."
+  },
+  {
+   "id": "bantayan",
+   "region": "north",
+   "category": "Islands",
+   "title": "Bantayan Island",
+   "keywords": [
+    "bantayan",
+    "santa fe",
+    "sta fe",
+    "hagnaya",
+    "kota",
+    "virgin island",
+    "ogtong",
+    "madridejos",
+    "white sand"
+   ],
+   "questions": [
+    "How do I get to Bantayan Island?",
+    "What to do in Bantayan?",
+    "Is Bantayan worth it?"
+   ],
+   "answer": "Getting there: bus from Cebu North Bus Terminal to Hagnaya Port, San Remigio (about 3 to 4 hours), then ferry to Santa Fe (about 1 hour). Several ferry trips run daily until late afternoon.\nWhat to do:\n- Swim at Kota Beach, Sugar Beach, and Paradise Beach.\n- Ogtong Cave pool in Santa Fe.\n- Island hop to Virgin Island and Hilantagaan.\n- Rent a motorbike and loop to Bantayan town and Madridejos (old church, Kota Park).\nBuy dried fish and eggs before you leave. Holy Week is very crowded, so book early."
+  },
+  {
+   "id": "malapascua",
+   "region": "north",
+   "category": "Islands",
+   "title": "Malapascua Island",
+   "keywords": [
+    "malapascua",
+    "thresher",
+    "shark",
+    "monad",
+    "shoal",
+    "maya",
+    "daanbantayan",
+    "dive",
+    "diving",
+    "kalanggaman"
+   ],
+   "questions": [
+    "How do I get to Malapascua?",
+    "Can I see thresher sharks?",
+    "Diving in Malapascua"
+   ],
+   "answer": "Getting there: bus from Cebu North Bus Terminal to Maya Port, Daanbantayan (about 4 to 5 hours), then a boat to Malapascua (about 30 to 45 minutes).\nHighlights:\n- Thresher shark dives at Monad Shoal, at dawn. You need Open Water certification, and Advanced is recommended for the depth.\n- Bounty Beach and Langob Beach for swimming.\n- Day trip to Kalanggaman Island (Leyte side) with its long sandbar.\nBring cash and arrive at Maya port before mid-afternoon."
+  },
+  {
+   "id": "camotes",
+   "region": "north",
+   "category": "Islands",
+   "title": "Camotes Islands",
+   "keywords": [
+    "camotes",
+    "danao",
+    "lake danao",
+    "consuelo",
+    "timubo",
+    "cave",
+    "santiago",
+    "mangodlong",
+    "pacijan",
+    "poro",
+    "busay falls"
+   ],
+   "questions": [
+    "How do I go to Camotes?",
+    "What to see in Camotes Islands?"
+   ],
+   "answer": "Getting there: bus or van to Danao City Port (about 1 to 1.5 hours from the city), then ferry to Consuelo, Camotes (about 2 hours).\nHighlights:\n- Lake Danao, the guitar-shaped lake, with bamboo rafts.\n- Timubo Cave and Bukilat Cave.\n- Santiago Bay and Mangodlong beaches.\n- Busay Falls.\nRent a motorbike or habal-habal with a driver for a day tour."
+  },
+  {
+   "id": "north-towns",
+   "region": "north",
+   "category": "Attractions",
+   "title": "Towns along the north road",
+   "keywords": [
+    "sogod",
+    "bogo",
+    "medellin",
+    "san remigio",
+    "danao",
+    "carmen",
+    "catmon",
+    "tabuelan",
+    "liloan",
+    "compostela",
+    "road trip"
+   ],
+   "questions": [
+    "What stops are there on the way north?",
+    "Road trip North Cebu"
+   ],
+   "answer": "Good stops on a North Cebu road trip:\n- Liloan: Liloan lighthouse and Titay's rosquillos.\n- Danao City: port to Camotes, and a lively public market.\n- Carmen and Catmon: mountain views and roadside fruit stands.\n- Sogod and Borbon: quiet beach resorts.\n- Bogo City: the main hub of the far north.\n- San Remigio: resorts and Hagnaya Port to Bantayan.\nRoadside stalls sell fresh fruit, puto, and budbud. Stopping to buy helps small farmers directly."
+  },
+  {
+   "id": "south-overview",
+   "region": "south",
+   "category": "Overview",
+   "title": "South Cebu overview",
+   "keywords": [
+    "south",
+    "southern",
+    "habagatan",
+    "overview",
+    "where",
+    "places",
+    "visit",
+    "destinations"
+   ],
+   "questions": [
+    "What are the places to visit in South Cebu?",
+    "What's in southern Cebu?"
+   ],
+   "answer": "South Cebu packs the classic adventures:\n- Oslob: whale sharks, Tumalog Falls, Sumilon Island.\n- Badian: Kawasan Falls and canyoneering.\n- Moalboal: sardine run, turtles, Pescador Island.\n- Dalaguete and Badian: Osmeña Peak, the highest point in Cebu.\n- Sibonga: Simala Shrine.\n- Carcar, Argao, and Boljoon: heritage churches and food.\nBuses leave from the Cebu South Bus Terminal. A loop takes 2 to 3 days."
+  },
+  {
+   "id": "oslob",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Oslob whale sharks",
+   "keywords": [
+    "oslob",
+    "whale",
+    "shark",
+    "butanding",
+    "tan-awan",
+    "tanawan",
+    "snorkel"
+   ],
+   "questions": [
+    "How do I see the whale sharks in Oslob?",
+    "How much is Oslob whale shark watching?",
+    "Is Oslob ethical?"
+   ],
+   "answer": "Getting there: bus from Cebu South Bus Terminal to Tan-awan, Oslob (about 3 to 4 hours). Leave by 4 or 5 am since viewing ends around noon.\nFees: roughly PHP 500 for locals and PHP 1,000 for foreigners for snorkeling (verify current rates).\nRules: keep your distance, no touching, no sunscreen in the water, no flash.\nNote: the sharks are hand-fed, which marine biologists criticize because it changes their behavior. If you prefer wild encounters, consider Malapascua (thresher sharks) or Moalboal (turtles and sardines) instead.\nCombine with Tumalog Falls and Sumilon Island the same day."
+  },
+  {
+   "id": "tumalog-sumilon",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Tumalog Falls and Sumilon Island",
+   "keywords": [
+    "tumalog",
+    "falls",
+    "sumilon",
+    "sandbar",
+    "oslob",
+    "bluewater"
+   ],
+   "questions": [
+    "Where is Tumalog Falls?",
+    "How to go to Sumilon Island?"
+   ],
+   "answer": "- Tumalog Falls: a curtain-like waterfall about 10 minutes from the whale shark area. Take a habal-habal down the steep road.\n- Sumilon Island: a marine sanctuary with a shifting sandbar, reached by boat from Bancogon, Oslob. Day trips are possible.\nBoth pair well with the morning whale shark visit."
+  },
+  {
+   "id": "kawasan",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Kawasan Falls and canyoneering",
+   "keywords": [
+    "kawasan",
+    "canyoneering",
+    "badian",
+    "alegria",
+    "falls",
+    "jump",
+    "cliff",
+    "matutinao",
+    "adventure"
+   ],
+   "questions": [
+    "How do I go to Kawasan Falls?",
+    "How much is canyoneering?",
+    "Is canyoneering safe?"
+   ],
+   "answer": "Kawasan Falls is in Matutinao, Badian, about 3 hours by bus from the South Bus Terminal.\nCanyoneering usually starts in Alegria or upstream Badian and ends at Kawasan. It takes 3 to 5 hours of river trekking, swimming, and jumps (all jumps are optional).\nPackages run roughly PHP 1,500 to 3,500 per person with guide, helmet, life vest, and transport (verify).\nBring aqua shoes, a waterproof phone pouch, and go with an accredited guide. Avoid it after heavy rain."
+  },
+  {
+   "id": "moalboal",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Moalboal sardine run and Pescador",
+   "keywords": [
+    "moalboal",
+    "sardine",
+    "sardines",
+    "run",
+    "turtle",
+    "pescador",
+    "panagsama",
+    "white beach",
+    "dive",
+    "snorkel"
+   ],
+   "questions": [
+    "What to do in Moalboal?",
+    "Where can I see the sardine run?",
+    "How to go to Moalboal?"
+   ],
+   "answer": "Getting there: bus from Cebu South Bus Terminal via Barili (about 3 hours).\nHighlights:\n- Sardine run: millions of sardines right off Panagsama Beach, reachable by snorkeling from shore.\n- Sea turtles along the reef wall.\n- Pescador Island: island hopping and diving.\n- White Beach (Basdaku) for swimming.\nMoalboal is a good base for Kawasan and has many dive shops and budget stays."
+  },
+  {
+   "id": "osmena-peak",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Osmeña Peak",
+   "keywords": [
+    "osmena",
+    "osmeña",
+    "peak",
+    "hike",
+    "highest",
+    "mountain",
+    "dalaguete",
+    "trek",
+    "sunrise"
+   ],
+   "questions": [
+    "How do I go to Osmeña Peak?",
+    "What is the highest mountain in Cebu?"
+   ],
+   "answer": "Osmeña Peak (about 1,000 meters) is the highest point in Cebu, in Mantalongon, Dalaguete.\nTake a bus to Dalaguete, then a habal-habal up to the jump-off. The hike to the summit is only about 20 to 30 minutes.\nGo for sunrise for the best view of the jagged hills. It gets cool up there, so bring a light jacket.\nYou can trek across to Kawasan Falls in Badian (about 3 to 4 hours downhill) with a guide."
+  },
+  {
+   "id": "simala",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Simala Shrine",
+   "keywords": [
+    "simala",
+    "shrine",
+    "castle",
+    "church",
+    "sibonga",
+    "lindogon",
+    "monastery",
+    "pilgrimage",
+    "miracle"
+   ],
+   "questions": [
+    "How to go to Simala Shrine?",
+    "What is Simala?"
+   ],
+   "answer": "The Monastery of the Holy Eucharist (Simala Shrine) in Lindogon, Sibonga is a castle-like church known for devotees' prayers and testimonies.\nGetting there: bus from Cebu South Bus Terminal to the Simala junction in Sibonga, then a habal-habal or tricycle up (about 1.5 to 2 hours total).\nStrict dress code: no shorts or sleeveless tops. Weekends are crowded."
+  },
+  {
+   "id": "south-heritage",
+   "region": "south",
+   "category": "Attractions",
+   "title": "Carcar, Argao, and Boljoon heritage",
+   "keywords": [
+    "carcar",
+    "argao",
+    "boljoon",
+    "heritage",
+    "church",
+    "old",
+    "spanish",
+    "ancestral",
+    "rotunda",
+    "dalaguete",
+    "alcoy",
+    "samboan",
+    "aguinid"
+   ],
+   "questions": [
+    "Old churches in South Cebu",
+    "What to see in Carcar?",
+    "What is in Argao?"
+   ],
+   "answer": "- Carcar City: heritage houses, St. Catherine of Alexandria Church, and the famous chicharon at the public market.\n- Argao: Spanish-era church and plaza, torta, and hablon handwoven fabric.\n- Dalaguete: the vegetable basket and summer capital of Cebu, gateway to Osmeña Peak.\n- Boljoon: the Patrocinio de Maria church, one of the best-preserved in the country, with a museum.\n- Alcoy: Tingko Beach. Samboan: Aguinid Falls.\nThese are easy stops on the way to or from Oslob."
+  },
+  {
+   "id": "dumaguete-bohol",
+   "region": "south",
+   "category": "Getting around",
+   "title": "Crossing to Dumaguete or Bohol",
+   "keywords": [
+    "dumaguete",
+    "negros",
+    "bohol",
+    "santander",
+    "liloan port",
+    "sibulan",
+    "ferry",
+    "cross",
+    "tagbilaran",
+    "oceanjet"
+   ],
+   "questions": [
+    "How do I go from Cebu to Dumaguete?",
+    "Ferry to Bohol"
+   ],
+   "answer": "- To Dumaguete: bus to Liloan Port, Santander (southern tip), then a short ferry to Sibulan, Negros Oriental (about 20 to 30 minutes).\n- To Bohol: fast craft from Pier 1 in Cebu City to Tagbilaran (about 2 hours). Book OceanJet or SuperCat in advance on weekends."
+  },
+  {
+   "id": "p-dried-mangoes",
+   "region": "products",
+   "category": "Local products",
+   "title": "Cebu dried mangoes",
+   "keywords": [
+    "mango",
+    "mangoes",
+    "dried mango",
+    "mangga",
+    "pasalubong",
+    "fruit"
+   ],
+   "questions": [
+    "Where can I buy dried mangoes?",
+    "Are Cebu mangoes the best?"
+   ],
+   "answer": "Cebu dried mangoes: Sweet, chewy dried Carabao mango slices. Cebu's best-known pasalubong.\nOrigin: Made from Carabao mangoes processed in Metro Cebu.\nWhere to buy: Pasalubong centers, malls, the airport, and factory outlets in Mandaue.\nTypical price: PHP 100 to 200 per 100 g pack (approximate, check with the seller).\nTip: Buy local brands from Cebu processors to support mango growers. Check the expiry date."
+  },
+  {
+   "id": "p-danggit",
+   "region": "products",
+   "category": "Local products",
+   "title": "Danggit and dried fish",
+   "keywords": [
+    "danggit",
+    "dried fish",
+    "buwad",
+    "pusit",
+    "squid",
+    "taboan",
+    "fish"
+   ],
+   "questions": [
+    "Where can I buy danggit?",
+    "What is Taboan market?"
+   ],
+   "answer": "Danggit and dried fish: Sun-dried rabbitfish (danggit), plus dried squid (pusit) and other dried fish. Fried crispy for breakfast with rice and vinegar.\nOrigin: Coastal towns, especially Bantayan Island and Daanbantayan.\nWhere to buy: Taboan Market (Cebu City) has the widest selection. On Bantayan, buy straight from processors near the port.\nTypical price: PHP 600 to 1,200 per kilo for danggit, depending on grade (approximate, check with the seller).\nTip: Ask for boneless or unsalted (lamayo-style) if you prefer. Ask the seller to vacuum-seal for flights."
+  },
+  {
+   "id": "p-bantayan-eggs",
+   "region": "products",
+   "category": "Local products",
+   "title": "Bantayan eggs and poultry",
+   "keywords": [
+    "egg",
+    "eggs",
+    "poultry",
+    "chicken",
+    "bantayan egg",
+    "itlog"
+   ],
+   "questions": [
+    "What is Bantayan known for?",
+    "Where do eggs in Cebu come from?"
+   ],
+   "answer": "Bantayan eggs and poultry: Bantayan's poultry farms supply eggs to much of the Visayas. Look for salted eggs and fresh trays.\nOrigin: Bantayan Island, the egg basket of the Visayas.\nWhere to buy: Markets in Bantayan town and Santa Fe, and roadside stalls on the island.\nTypical price: Local market prices per tray (approximate, check with the seller).\nTip: Good to buy for your stay. Fresh eggs travel poorly, so choose salted eggs if taking them home."
+  },
+  {
+   "id": "p-chicharon",
+   "region": "products",
+   "category": "Local products",
+   "title": "Carcar chicharon",
+   "keywords": [
+    "chicharon",
+    "chicharron",
+    "carcar",
+    "pork",
+    "crackling",
+    "snack"
+   ],
+   "questions": [
+    "Where is the best chicharon?",
+    "What is Carcar famous for?"
+   ],
+   "answer": "Carcar chicharon: Crispy pork crackling, including the famous 'with laman' (with meat) and bituka (intestine) versions.\nOrigin: Carcar City, South Cebu.\nWhere to buy: Carcar Public Market near the rotunda. Also sold in pasalubong shops in the city.\nTypical price: PHP 150 to 300 per pack (approximate, check with the seller).\nTip: Buy on the way back from the south so it stays crisp. Pair it with spiced vinegar."
+  },
+  {
+   "id": "p-lechon",
+   "region": "products",
+   "category": "Local products",
+   "title": "Cebu lechon",
+   "keywords": [
+    "lechon",
+    "roast pig",
+    "litson",
+    "talisay",
+    "baboy"
+   ],
+   "questions": [
+    "Where is the best lechon in Cebu?",
+    "Can I bring lechon on the plane?"
+   ],
+   "answer": "Cebu lechon: Whole roast pig stuffed with lemongrass, garlic, and spices. Famous for crispy skin and flavor that needs no sauce.\nOrigin: Talisay City and Carcar City, South Cebu.\nWhere to buy: Lechon houses in Talisay and Carcar, and well-known shops in Cebu City. Order by the kilo or whole.\nTypical price: PHP 800 to 1,000 per kilo; whole lechon from about PHP 7,000 (approximate, check with the seller).\nTip: Order a day ahead for a whole pig. Some shops vacuum-pack lechon for travel."
+  },
+  {
+   "id": "p-rosquillos",
+   "region": "products",
+   "category": "Local products",
+   "title": "Rosquillos",
+   "keywords": [
+    "rosquillos",
+    "liloan",
+    "titay",
+    "cookie",
+    "biscuit"
+   ],
+   "questions": [
+    "What is rosquillos?",
+    "Where can I buy rosquillos?"
+   ],
+   "answer": "Rosquillos: Crisp, flower-shaped cookies first made in Liloan, the original from Titay's.\nOrigin: Liloan, North Metro Cebu.\nWhere to buy: Titay's in Liloan and pasalubong shops across Metro Cebu.\nTypical price: PHP 80 to 150 per pack (approximate, check with the seller).\nTip: Visit the original Titay's on the way north to Danao or Bantayan."
+  },
+  {
+   "id": "p-otap",
+   "region": "products",
+   "category": "Local products",
+   "title": "Otap",
+   "keywords": [
+    "otap",
+    "pastry",
+    "biscuit",
+    "flaky"
+   ],
+   "questions": [
+    "What is otap?"
+   ],
+   "answer": "Otap: Flaky, oval puff pastry with sugar. A classic Cebu pasalubong that pairs well with coffee or sikwate.\nOrigin: Metro Cebu bakeries.\nWhere to buy: Pasalubong centers, supermarkets, and bakeries in Cebu City and Mandaue.\nTypical price: PHP 80 to 150 per pack (approximate, check with the seller).\nTip: It crumbles easily, so pack it on top of your bag."
+  },
+  {
+   "id": "p-torta",
+   "region": "products",
+   "category": "Local products",
+   "title": "Argao torta",
+   "keywords": [
+    "torta",
+    "argao",
+    "cake",
+    "tuba",
+    "bread"
+   ],
+   "questions": [
+    "What is Argao torta?",
+    "What can I buy in Argao?"
+   ],
+   "answer": "Argao torta: Soft, sweet cake traditionally made with tuba (coconut wine) and pork lard, baked in a mold.\nOrigin: Argao, South Cebu.\nWhere to buy: Argao public market and home bakeries along the highway.\nTypical price: PHP 20 to 40 per piece (approximate, check with the seller).\nTip: Best eaten within a few days. Great with sikwate."
+  },
+  {
+   "id": "p-hablon",
+   "region": "products",
+   "category": "Local products",
+   "title": "Argao hablon",
+   "keywords": [
+    "hablon",
+    "weaving",
+    "woven",
+    "fabric",
+    "textile",
+    "handicraft",
+    "craft",
+    "souvenir"
+   ],
+   "questions": [
+    "What handicrafts are made in Cebu?",
+    "What is hablon?"
+   ],
+   "answer": "Argao hablon: Handwoven fabric made on wooden looms by local weavers, turned into scarves, bags, and table runners.\nOrigin: Argao, South Cebu.\nWhere to buy: Weaving centers and shops in Argao.\nTypical price: PHP 200 to 1,500 depending on the item (approximate, check with the seller).\nTip: Buying direct from weavers keeps the tradition alive. Ask for a weaving demonstration."
+  },
+  {
+   "id": "p-mantalongon-veg",
+   "region": "products",
+   "category": "Local products",
+   "title": "Mantalongon highland vegetables",
+   "keywords": [
+    "vegetables",
+    "vegetable",
+    "gulay",
+    "mantalongon",
+    "dalaguete",
+    "highland",
+    "farm",
+    "cabbage",
+    "carrots"
+   ],
+   "questions": [
+    "Where do vegetables in Cebu come from?",
+    "Is there a farmers market in Cebu?"
+   ],
+   "answer": "Mantalongon highland vegetables: Cool-climate vegetables like cabbage, carrots, bell pepper, and lettuce grown in the Dalaguete highlands.\nOrigin: Mantalongon, Dalaguete, the vegetable basket of Cebu.\nWhere to buy: Mantalongon public market (busiest early morning) and roadside stalls on the way to Osmeña Peak.\nTypical price: Farm-gate prices, usually cheaper than city markets (approximate, check with the seller).\nTip: Visit the Mantalongon market at dawn before hiking Osmeña Peak. Farmers sell directly here."
+  },
+  {
+   "id": "p-sirao-flowers",
+   "region": "products",
+   "category": "Local products",
+   "title": "Sirao celosia flowers",
+   "keywords": [
+    "flower",
+    "flowers",
+    "sirao",
+    "celosia",
+    "garden",
+    "agri",
+    "agritourism",
+    "farm tour"
+   ],
+   "questions": [
+    "Are there farm tours near Cebu City?",
+    "Where is the flower farm?"
+   ],
+   "answer": "Sirao celosia flowers: Flower farms growing celosia and other cut flowers, also open to visitors as photo gardens.\nOrigin: Sirao, Cebu City highlands.\nWhere to buy: Flower farms in Sirao and Busay.\nTypical price: Entrance about PHP 100 to 150; flowers by the bundle (approximate, check with the seller).\nTip: Go early morning for cooler weather and better light."
+  },
+  {
+   "id": "p-guitars",
+   "region": "products",
+   "category": "Local products",
+   "title": "Mactan guitars",
+   "keywords": [
+    "guitar",
+    "ukulele",
+    "instrument",
+    "music",
+    "abuno",
+    "maribago"
+   ],
+   "questions": [
+    "Where can I buy a guitar in Cebu?"
+   ],
+   "answer": "Mactan guitars: Handcrafted guitars and ukuleles from family workshops using local and imported woods.\nOrigin: Abuno and Maribago, Lapu-Lapu City.\nWhere to buy: Workshops and showrooms in Abuno and Maribago, Mactan.\nTypical price: Ukuleles from about PHP 1,500; guitars from about PHP 4,000 (approximate, check with the seller).\nTip: Ask for a workshop tour. Workshops can pack instruments for flights."
+  },
+  {
+   "id": "p-puso-masi",
+   "region": "products",
+   "category": "Local products",
+   "title": "Puso, masi, and budbud",
+   "keywords": [
+    "puso",
+    "masi",
+    "budbud",
+    "rice cake",
+    "kakanin",
+    "hanging rice",
+    "snack"
+   ],
+   "questions": [
+    "What is puso?",
+    "What snacks are local?"
+   ],
+   "answer": "Puso, masi, and budbud: Puso is rice in woven coconut leaves. Masi is a sticky rice ball with peanut and sugar. Budbud is sticky rice wrapped in banana leaf.\nOrigin: Made across Cebu, sold in every town market.\nWhere to buy: Town public markets, carenderias, and roadside stalls.\nTypical price: PHP 5 to 30 per piece (approximate, check with the seller).\nTip: Masi and budbud make cheap road-trip snacks. Buy from local vendors along the highways."
+  },
+  {
+   "id": "p-sikwate-tablea",
+   "region": "products",
+   "category": "Local products",
+   "title": "Tablea and sikwate",
+   "keywords": [
+    "tablea",
+    "sikwate",
+    "cacao",
+    "chocolate",
+    "cocoa",
+    "puto maya",
+    "breakfast"
+   ],
+   "questions": [
+    "Where can I buy tablea?",
+    "What is sikwate?"
+   ],
+   "answer": "Tablea and sikwate: Pure ground cacao tablets (tablea) used to make sikwate, the thick Cebuano hot chocolate.\nOrigin: Made from cacao grown in Cebu and nearby Visayas uplands.\nWhere to buy: Public markets, Carbon Market, and pasalubong shops.\nTypical price: PHP 100 to 250 per pack (approximate, check with the seller).\nTip: Ask for locally grown cacao to support small farmers. Breakfast of sikwate and puto maya is a Cebu classic."
+  },
+  {
+   "id": "p-seaweed",
+   "region": "products",
+   "category": "Local products",
+   "title": "Guso and seaweed",
+   "keywords": [
+    "seaweed",
+    "guso",
+    "lato",
+    "salad",
+    "sea grapes"
+   ],
+   "questions": [
+    "What is guso?"
+   ],
+   "answer": "Guso and seaweed: Fresh seaweed (guso, lato) eaten as salad with vinegar and tomatoes. Seaweed farming supports many coastal families.\nOrigin: Coastal farms around Cebu and nearby islands.\nWhere to buy: Coastal town markets, Carbon Market, and seafood restaurants.\nTypical price: PHP 20 to 60 per serving (approximate, check with the seller).\nTip: Eat it fresh at a sutukil place. It doesn't travel well."
+  },
+  {
+   "id": "p-corn",
+   "region": "products",
+   "category": "Local products",
+   "title": "Corn and bugas mais",
+   "keywords": [
+    "corn",
+    "mais",
+    "bugas mais",
+    "grits",
+    "maize"
+   ],
+   "questions": [
+    "Do Cebuanos eat corn rice?"
+   ],
+   "answer": "Corn and bugas mais: Cebu has a strong corn tradition. Corn grits (bugas mais) are eaten like rice, and boiled corn is sold along the highways.\nOrigin: Upland and northern farming towns.\nWhere to buy: Town public markets and roadside stalls.\nTypical price: Local market prices (approximate, check with the seller).\nTip: Try a meal with bugas mais at a local carenderia for a true Cebuano experience."
+  },
+  {
+   "id": "p-banana-chips",
+   "region": "products",
+   "category": "Local products",
+   "title": "Banana chips and fruit snacks",
+   "keywords": [
+    "banana chips",
+    "banana",
+    "saging",
+    "chips"
+   ],
+   "questions": [
+    "What fruit snacks can I bring home?"
+   ],
+   "answer": "Banana chips and fruit snacks: Sweet, crunchy banana chips and other dried fruit snacks from local cooperatives.\nOrigin: Small processors across Cebu.\nWhere to buy: Pasalubong centers, supermarkets, and cooperative stores.\nTypical price: PHP 50 to 150 per pack (approximate, check with the seller).\nTip: Look for cooperative or barangay-made labels to support local producers."
+  },
+  {
+   "id": "pasalubong",
+   "region": "products",
+   "category": "Local products",
+   "title": "Pasalubong guide",
+   "keywords": [
+    "pasalubong",
+    "souvenir",
+    "buy",
+    "bring home",
+    "gift",
+    "shopping",
+    "products",
+    "local products",
+    "market"
+   ],
+   "questions": [
+    "What pasalubong should I buy?",
+    "What are Cebu's local products?",
+    "What can I bring home from Cebu?"
+   ],
+   "answer": "Top pasalubong and local products from Cebu:\n- Food: dried mangoes, danggit and dried squid, Carcar chicharon, otap, rosquillos, Argao torta, tablea.\n- Fresh from farms: Mantalongon vegetables, Bantayan eggs, highway fruits.\n- Crafts: Argao hablon weaving, Mactan guitars and ukuleles.\nWhere to shop: Taboan Market for dried fish, Carbon Market for produce, pasalubong centers in the city, and town markets on your route.\nBuying directly in the towns helps the farmers and makers most. Tap a product in the Pasalubong tab for details."
+  },
+  {
+   "id": "markets",
+   "region": "metro",
+   "category": "Local products",
+   "title": "Carbon and Taboan markets",
+   "keywords": [
+    "carbon",
+    "taboan",
+    "market",
+    "public market",
+    "wet market",
+    "palengke",
+    "tiangge"
+   ],
+   "questions": [
+    "Where is Carbon Market?",
+    "What can I buy in Taboan?"
+   ],
+   "answer": "- Carbon Market (downtown Cebu City): the oldest and largest farmers' market, with fruits, vegetables, flowers, and native goods. The redeveloped section is cleaner and easier to walk.\n- Taboan Market (near Pasil): the dried fish market, with danggit, pusit, and more.\nGo in the morning, bring small bills, and keep your phone secure in crowds."
+  },
+  {
+   "id": "cargo-food",
+   "region": "products",
+   "category": "Local products",
+   "title": "Bringing food on flights",
+   "keywords": [
+    "flight",
+    "plane",
+    "airport",
+    "baggage",
+    "check in",
+    "carry on",
+    "bring",
+    "allowed",
+    "customs",
+    "pack"
+   ],
+   "questions": [
+    "Can I bring danggit on the plane?",
+    "Can I take lechon home?"
+   ],
+   "answer": "Dried goods (mangoes, danggit, chicharon, otap) are fine in checked baggage when sealed. Ask sellers to vacuum-seal dried fish so it doesn't smell.\nLechon is allowed if packed well. Many shops offer travel boxes.\nFor international flights, check your destination's customs rules. Many countries restrict meat, fresh produce, and eggs."
+  }
+ ],
+ "products": [
+  {
+   "id": "dried-mangoes",
+   "name": "Cebu dried mangoes",
+   "kind": "Processed fruit",
+   "origin": "Made from Carabao mangoes processed in Metro Cebu",
+   "region": "metro",
+   "description": "Sweet, chewy dried Carabao mango slices. Cebu's best-known pasalubong.",
+   "where_to_buy": "Pasalubong centers, malls, the airport, and factory outlets in Mandaue.",
+   "price_range": "PHP 100 to 200 per 100 g pack",
+   "tip": "Buy local brands from Cebu processors to support mango growers. Check the expiry date."
+  },
+  {
+   "id": "danggit",
+   "name": "Danggit and dried fish",
+   "kind": "Seafood",
+   "origin": "Coastal towns, especially Bantayan Island and Daanbantayan",
+   "region": "north",
+   "description": "Sun-dried rabbitfish (danggit), plus dried squid (pusit) and other dried fish. Fried crispy for breakfast with rice and vinegar.",
+   "where_to_buy": "Taboan Market (Cebu City) has the widest selection. On Bantayan, buy straight from processors near the port.",
+   "price_range": "PHP 600 to 1,200 per kilo for danggit, depending on grade",
+   "tip": "Ask for boneless or unsalted (lamayo-style) if you prefer. Ask the seller to vacuum-seal for flights."
+  },
+  {
+   "id": "bantayan-eggs",
+   "name": "Bantayan eggs and poultry",
+   "kind": "Agriculture",
+   "origin": "Bantayan Island, the egg basket of the Visayas",
+   "region": "north",
+   "description": "Bantayan's poultry farms supply eggs to much of the Visayas. Look for salted eggs and fresh trays.",
+   "where_to_buy": "Markets in Bantayan town and Santa Fe, and roadside stalls on the island.",
+   "price_range": "Local market prices per tray",
+   "tip": "Good to buy for your stay. Fresh eggs travel poorly, so choose salted eggs if taking them home."
+  },
+  {
+   "id": "chicharon",
+   "name": "Carcar chicharon",
+   "kind": "Food",
+   "origin": "Carcar City, South Cebu",
+   "region": "south",
+   "description": "Crispy pork crackling, including the famous 'with laman' (with meat) and bituka (intestine) versions.",
+   "where_to_buy": "Carcar Public Market near the rotunda. Also sold in pasalubong shops in the city.",
+   "price_range": "PHP 150 to 300 per pack",
+   "tip": "Buy on the way back from the south so it stays crisp. Pair it with spiced vinegar."
+  },
+  {
+   "id": "lechon",
+   "name": "Cebu lechon",
+   "kind": "Food",
+   "origin": "Talisay City and Carcar City, South Cebu",
+   "region": "south",
+   "description": "Whole roast pig stuffed with lemongrass, garlic, and spices. Famous for crispy skin and flavor that needs no sauce.",
+   "where_to_buy": "Lechon houses in Talisay and Carcar, and well-known shops in Cebu City. Order by the kilo or whole.",
+   "price_range": "PHP 800 to 1,000 per kilo; whole lechon from about PHP 7,000",
+   "tip": "Order a day ahead for a whole pig. Some shops vacuum-pack lechon for travel."
+  },
+  {
+   "id": "rosquillos",
+   "name": "Rosquillos",
+   "kind": "Pastry",
+   "origin": "Liloan, North Metro Cebu",
+   "region": "north",
+   "description": "Crisp, flower-shaped cookies first made in Liloan, the original from Titay's.",
+   "where_to_buy": "Titay's in Liloan and pasalubong shops across Metro Cebu.",
+   "price_range": "PHP 80 to 150 per pack",
+   "tip": "Visit the original Titay's on the way north to Danao or Bantayan."
+  },
+  {
+   "id": "otap",
+   "name": "Otap",
+   "kind": "Pastry",
+   "origin": "Metro Cebu bakeries",
+   "region": "metro",
+   "description": "Flaky, oval puff pastry with sugar. A classic Cebu pasalubong that pairs well with coffee or sikwate.",
+   "where_to_buy": "Pasalubong centers, supermarkets, and bakeries in Cebu City and Mandaue.",
+   "price_range": "PHP 80 to 150 per pack",
+   "tip": "It crumbles easily, so pack it on top of your bag."
+  },
+  {
+   "id": "torta",
+   "name": "Argao torta",
+   "kind": "Pastry",
+   "origin": "Argao, South Cebu",
+   "region": "south",
+   "description": "Soft, sweet cake traditionally made with tuba (coconut wine) and pork lard, baked in a mold.",
+   "where_to_buy": "Argao public market and home bakeries along the highway.",
+   "price_range": "PHP 20 to 40 per piece",
+   "tip": "Best eaten within a few days. Great with sikwate."
+  },
+  {
+   "id": "hablon",
+   "name": "Argao hablon",
+   "kind": "Handicraft",
+   "origin": "Argao, South Cebu",
+   "region": "south",
+   "description": "Handwoven fabric made on wooden looms by local weavers, turned into scarves, bags, and table runners.",
+   "where_to_buy": "Weaving centers and shops in Argao.",
+   "price_range": "PHP 200 to 1,500 depending on the item",
+   "tip": "Buying direct from weavers keeps the tradition alive. Ask for a weaving demonstration."
+  },
+  {
+   "id": "mantalongon-veg",
+   "name": "Mantalongon highland vegetables",
+   "kind": "Agriculture",
+   "origin": "Mantalongon, Dalaguete, the vegetable basket of Cebu",
+   "region": "south",
+   "description": "Cool-climate vegetables like cabbage, carrots, bell pepper, and lettuce grown in the Dalaguete highlands.",
+   "where_to_buy": "Mantalongon public market (busiest early morning) and roadside stalls on the way to Osmeña Peak.",
+   "price_range": "Farm-gate prices, usually cheaper than city markets",
+   "tip": "Visit the Mantalongon market at dawn before hiking Osmeña Peak. Farmers sell directly here."
+  },
+  {
+   "id": "sirao-flowers",
+   "name": "Sirao celosia flowers",
+   "kind": "Agri-tourism",
+   "origin": "Sirao, Cebu City highlands",
+   "region": "metro",
+   "description": "Flower farms growing celosia and other cut flowers, also open to visitors as photo gardens.",
+   "where_to_buy": "Flower farms in Sirao and Busay.",
+   "price_range": "Entrance about PHP 100 to 150; flowers by the bundle",
+   "tip": "Go early morning for cooler weather and better light."
+  },
+  {
+   "id": "guitars",
+   "name": "Mactan guitars",
+   "kind": "Handicraft",
+   "origin": "Abuno and Maribago, Lapu-Lapu City",
+   "region": "metro",
+   "description": "Handcrafted guitars and ukuleles from family workshops using local and imported woods.",
+   "where_to_buy": "Workshops and showrooms in Abuno and Maribago, Mactan.",
+   "price_range": "Ukuleles from about PHP 1,500; guitars from about PHP 4,000",
+   "tip": "Ask for a workshop tour. Workshops can pack instruments for flights."
+  },
+  {
+   "id": "puso-masi",
+   "name": "Puso, masi, and budbud",
+   "kind": "Food",
+   "origin": "Made across Cebu, sold in every town market",
+   "region": "general",
+   "description": "Puso is rice in woven coconut leaves. Masi is a sticky rice ball with peanut and sugar. Budbud is sticky rice wrapped in banana leaf.",
+   "where_to_buy": "Town public markets, carenderias, and roadside stalls.",
+   "price_range": "PHP 5 to 30 per piece",
+   "tip": "Masi and budbud make cheap road-trip snacks. Buy from local vendors along the highways."
+  },
+  {
+   "id": "sikwate-tablea",
+   "name": "Tablea and sikwate",
+   "kind": "Agriculture",
+   "origin": "Made from cacao grown in Cebu and nearby Visayas uplands",
+   "region": "general",
+   "description": "Pure ground cacao tablets (tablea) used to make sikwate, the thick Cebuano hot chocolate.",
+   "where_to_buy": "Public markets, Carbon Market, and pasalubong shops.",
+   "price_range": "PHP 100 to 250 per pack",
+   "tip": "Ask for locally grown cacao to support small farmers. Breakfast of sikwate and puto maya is a Cebu classic."
+  },
+  {
+   "id": "seaweed",
+   "name": "Guso and seaweed",
+   "kind": "Seafood",
+   "origin": "Coastal farms around Cebu and nearby islands",
+   "region": "general",
+   "description": "Fresh seaweed (guso, lato) eaten as salad with vinegar and tomatoes. Seaweed farming supports many coastal families.",
+   "where_to_buy": "Coastal town markets, Carbon Market, and seafood restaurants.",
+   "price_range": "PHP 20 to 60 per serving",
+   "tip": "Eat it fresh at a sutukil place. It doesn't travel well."
+  },
+  {
+   "id": "corn",
+   "name": "Corn and bugas mais",
+   "kind": "Agriculture",
+   "origin": "Upland and northern farming towns",
+   "region": "general",
+   "description": "Cebu has a strong corn tradition. Corn grits (bugas mais) are eaten like rice, and boiled corn is sold along the highways.",
+   "where_to_buy": "Town public markets and roadside stalls.",
+   "price_range": "Local market prices",
+   "tip": "Try a meal with bugas mais at a local carenderia for a true Cebuano experience."
+  },
+  {
+   "id": "banana-chips",
+   "name": "Banana chips and fruit snacks",
+   "kind": "Processed fruit",
+   "origin": "Small processors across Cebu",
+   "region": "general",
+   "description": "Sweet, crunchy banana chips and other dried fruit snacks from local cooperatives.",
+   "where_to_buy": "Pasalubong centers, supermarkets, and cooperative stores.",
+   "price_range": "PHP 50 to 150 per pack",
+   "tip": "Look for cooperative or barangay-made labels to support local producers."
+  }
+ ]
+};
+const ix = SugboRouter.build(KB);
+const cache = new Map();
+const byId = Object.fromEntries(KB.entries.map(e => [e.id, e]));
+const $ = s => document.querySelector(s);
+const log = $("#log");
+$("#ver").textContent = KB.verified;
+
+function esc(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function fmt(text){
+  const lines = text.split("\n"); let html = "", list = false;
+  for (const l of lines){
+    if (l.startsWith("- ")){ if(!list){html+="<ul>";list=true} html+="<li>"+esc(l.slice(2))+"</li>"; }
+    else { if(list){html+="</ul>";list=false} if(l.trim()) html+="<p>"+esc(l)+"</p>"; }
+  }
+  return html + (list?"</ul>":"");
+}
+function add(role, html, extra){
+  const m = document.createElement("div"); m.className = "msg " + role;
+  m.innerHTML = '<div class="bubble">'+html+'</div>' + (extra||"");
+  log.appendChild(m); log.scrollTop = log.scrollHeight; return m;
+}
+function ask(question){
+  question = question.trim(); if (!question) return;
+  add("user", esc(question));
+  const key = SugboRouter.norm(question);
+  const t0 = performance.now();
+  let r = cache.get(key), hit = !!r;
+  if (!r){ r = SugboRouter.route(ix, question); cache.set(key, r); }
+  const ms = (performance.now() - t0);
+  const label = hit ? ["cache","Cache hit"] : r.route==="kb" ? ["kb","Instant · knowledge base"] : r.route==="llm" ? ["llm","Local LLM route"] : ["fallback","Fallback"];
+  let meta = '<div class="meta route-meta"><span class="pill '+label[0]+'">'+label[1]+'</span><span>'+(ms<0.1?"<0.1":ms.toFixed(2))+' ms</span><span>score '+r.score.toFixed(1)+'</span>';
+  if (r.route==="llm" && !hit) meta += '<span>context: '+r.context.map(e=>esc(e.title)).join(", ")+'</span>';
+  meta += '</div>';
+  const rel = r.related && r.related.length ? '<div class="related">'+r.related.map(e=>'<button class="chip" data-q="'+esc(e.questions[0]||e.title)+'">'+esc(e.title)+'</button>').join("")+'</div>' : "";
+  const title = r.entry.id==="fallback"||r.entry.id==="greet" ? "" : '<span class="t">'+esc(r.entry.title)+'</span>';
+  add("bot", title + fmt(r.entry.answer), meta + rel);
+  applyRouteVisibility();
+}
+function applyRouteVisibility(){const on=$("#showRoute").checked;document.querySelectorAll(".route-meta").forEach(el=>el.hidden=!on)}
+$("#showRoute").addEventListener("change", applyRouteVisibility);
+$("#f").addEventListener("submit", e => { e.preventDefault(); ask($("#q").value); $("#q").value=""; });
+document.addEventListener("click", e => { const b = e.target.closest("[data-q]"); if (b){ ask(b.dataset.q); } });
+
+const quick = ["How do I get to Bantayan?","How much is Oslob whale shark watching?","Canyoneering in Kawasan","What pasalubong should I buy?","Where can I buy danggit?","Airport to the city","Is Cebu safe?","Teach me Bisaya phrases"];
+$("#quick").innerHTML = quick.map(q=>'<button class="chip" data-q="'+esc(q)+'">'+esc(q)+'</button>').join("");
+
+const TABS = [
+  {id:"north", label:"North", c:"var(--north)", lede:"White-sand islands and quiet towns. Buses from the North Bus Terminal."},
+  {id:"south", label:"South", c:"var(--south)", lede:"Waterfalls, whale sharks, peaks, and heritage churches. Buses from the South Bus Terminal."},
+  {id:"metro", label:"City", c:"var(--metro)", lede:"Heritage, highlands, Mactan, and the basics for getting around."},
+  {id:"products", label:"Pasalubong", c:"var(--leaf)", lede:"Local farm products, food, and crafts. Buying in the towns supports the makers directly."},
+];
+function renderTab(id){
+  const t = TABS.find(x=>x.id===id);
+  document.querySelectorAll(".tab").forEach(b=>b.setAttribute("aria-selected", b.dataset.tab===id));
+  const p = $("#panel"); p.style.setProperty("--c", t.c);
+  let html = '<h2>'+t.label+(id==="products"?"":" Cebu")+'</h2><p class="lede">'+t.lede+'</p>';
+  if (id==="products"){
+    html += KB.products.map(x=>'<div class="prod"><div class="prod-top"><b>'+esc(x.name)+'</b><span class="kind">'+esc(x.kind)+'</span></div>'+
+      '<dl><dt>From</dt><dd>'+esc(x.origin)+'</dd><dt>Buy at</dt><dd>'+esc(x.where_to_buy)+'</dd><dt>Price</dt><dd>'+esc(x.price_range)+'</dd></dl>'+
+      '<div><button class="ask" data-q="'+esc(byId["p-"+x.id].questions[0])+'">Ask the bot</button></div></div>').join("");
+  } else {
+    const general = id==="metro" ? KB.entries.filter(e=>e.region==="general" && !["greet","fallback"].includes(e.id)) : [];
+    html += KB.entries.filter(e=>e.region===id).concat(general).map(e=>'<div class="stop"><div><b>'+esc(e.title)+'</b><span>'+esc(e.category)+'</span></div><button class="ask" data-q="'+esc(e.questions[0]||e.title)+'">Ask</button></div>').join("");
+  }
+  p.innerHTML = html; p.scrollTop = 0;
+}
+$("#tabs").innerHTML = TABS.map(t=>'<button class="tab" role="tab" data-tab="'+t.id+'" style="--c:'+t.c+'">'+t.label+'</button>').join("");
+$("#tabs").addEventListener("click", e=>{const b=e.target.closest(".tab"); if(b) renderTab(b.dataset.tab)});
+renderTab("north");
+
+add("bot", fmt(byId.greet.answer));
+ask("What pasalubong should I buy?");
+</script>

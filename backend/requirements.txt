@@ -1,0 +1,9 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+httpx>=0.27
+numpy>=1.26
+# experiments
+scipy>=1.11
+matplotlib>=3.8
+# optional: semantic cache and dense channel
+# sentence-transformers>=3.0
