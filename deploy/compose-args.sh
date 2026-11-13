@@ -12,4 +12,5 @@ else
   COMPOSE="$SUDO docker compose --profile llm"
   OLLAMA="$SUDO docker compose exec -T ollama"
 fi
-[ -n "${DOMAIN:-}" ] && COMPOSE="$COMPOSE --profile https"
+if [ -n "${DOMAIN:-}" ]; then COMPOSE="$COMPOSE --profile https"; fi
+true
