@@ -58,7 +58,7 @@ Environment variables: ROUTER (dalan or hybrid), DALAN_EPS (skip error budget, d
 
 Edit kb/build_kb.py and run it. Add new Cebuano or Tagalog words to dalan/lexicon.py. Add real user questions to data/build_queries.py and rerun the experiments. The browser prototype is rebuilt from web/page.html, web/router.js, and kb/kb.json:
 
-    python -c "p=open('web/page.html').read().replace('/*__ROUTER__*/',open('web/router.js').read()).replace('/*__KB__*/null',open('kb/kb.json').read());open('web/sugbo-guide.html','w').write(p)"
+    python web/build_page.py
 
 ## Limitations
 

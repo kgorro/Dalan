@@ -207,6 +207,11 @@ async def chat_stream(body: Ask):
     return StreamingResponse(llm_stream(body.question, r["context"]), media_type="text/plain")
 
 
+@app.get("/health")
+def health():
+    return dict(name="Sugbo Guide", entries=len(KB["entries"]), products=len(KB["products"]))
+
+
 @app.get("/products")
 def products(region: str | None = None):
     return [p for p in KB["products"] if region in (None, p["region"])]
