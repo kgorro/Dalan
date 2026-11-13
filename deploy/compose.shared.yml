@@ -1,0 +1,10 @@
+# Share PoultryBot's Ollama instead of running a second copy of the model (saves several GB of RAM).
+# Joins PoultryBot's Docker network, where its Ollama container answers to the name "ollama".
+services:
+  sugboguide:
+    networks: [default, poultrybot]
+
+networks:
+  poultrybot:
+    name: poultrybot_default
+    external: true

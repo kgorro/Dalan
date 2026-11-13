@@ -1,0 +1,47 @@
+# Sugbo Guide on one VPS. deploy/install.sh picks the right command for you.
+#   docker compose --profile llm up -d        bot + its own local LLM, on http://<server>:8001
+#   docker compose -f docker-compose.yml -f deploy/compose.shared.yml up -d
+#                                             bot only, sharing PoultryBot's local LLM on the same VPS
+#   add --profile https                       Caddy with automatic HTTPS for DOMAIN (ports 80, 443)
+# Settings come from .env (copy .env.example).
+
+services:
+  sugboguide:
+    build: .
+    image: sugboguide:latest
+    restart: unless-stopped
+    environment:
+      LLM_BASE_URL: http://ollama:11434/v1
+      LLM_MODEL: ${LLM_MODEL:-qwen2.5:3b-instruct}
+      DALAN_EPS: ${DALAN_EPS:-0.05}
+      FB_VERIFY_TOKEN: ${FB_VERIFY_TOKEN:-}
+      FB_PAGE_TOKEN: ${FB_PAGE_TOKEN:-}
+    ports:
+      - "${BOT_PORT:-8001}:8000"
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    restart: unless-stopped
+    volumes:
+      - ollama:/root/.ollama     # downloaded models
+    # Not published to the internet; only the bot talks to it.
+
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy:/data
+    depends_on:
+      - sugboguide
+
+volumes:
+  ollama:
+  caddy:

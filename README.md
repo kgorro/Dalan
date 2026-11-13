@@ -66,6 +66,14 @@ Edit kb/build_kb.py and run it. Add new Cebuano or Tagalog words to dalan/lexico
 - LLM answer quality is modeled with stated assumptions (90% correct with the right context, 70% correct refusals without). Measure these with the deployed model.
 - Fares, fees, and schedules in the knowledge base are approximate and must be verified with DOT Region VII, the Cebu Provincial Tourism Office, LGUs, and operators before public use.
 
+
+## Deploying with Docker
+
+    git clone https://github.com/kgorro/Dalan.git ~/sugboguide && cd ~/sugboguide
+    cp .env.example .env && bash deploy/install.sh
+
+Runs the bot on port 8001 with a local LLM (Ollama), sharing PoultryBot's model automatically when both are on the same VPS. Details: [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Author
 
 Ken D. Gorro, Center for Cloud Computing, Big Data and AI, Cebu Technological University, Carmen Campus.
