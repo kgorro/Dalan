@@ -30,7 +30,7 @@ Also allow 8001 in your VPS provider's firewall if it has one. The bot is then a
 
 Running Sugbo Guide alone: point a DNS A record to the VPS, set DOMAIN in .env, set BOT_PORT=127.0.0.1:8001, open ports 80 and 443, and run bash deploy/install.sh again.
 
-If PoultryBot also has a domain on this VPS, only one Caddy can use ports 80 and 443. Leave DOMAIN empty here and add the Sugbo Guide domain to PoultryBot's Caddy instead.
+If PoultryBot runs on the same VPS, use the shared HTTPS gateway in the PoultryBot repo instead (docs/GATEWAY.md there). It serves Sugbo Guide at https://sugbo.cccbdai.tech/ and https://cccbdai.tech/sugbo/. Leave DOMAIN empty here.
 
 ## Everyday commands
 
