@@ -44,6 +44,8 @@ EMBED_MODEL = os.getenv("EMBED_MODEL", "intfloat/multilingual-e5-small")
 USE_EMBEDDINGS = os.getenv("USE_EMBEDDINGS", "0") == "1"   # optional semantic cache / hybrid router
 CACHE_SIM = float(os.getenv("CACHE_SIM", "0.93"))      # semantic cache threshold
 KB_SIM = float(os.getenv("KB_SIM", "0.86"))            # embedding score that counts as confident
+# When DALAN would decline but the question overlaps some topics, answer with the LLM from the closest topics
+NEAREST_TO_LLM = os.getenv("NEAREST_TO_LLM", "1") == "1"
 
 SYSTEM_PROMPT = (
     "You are Sugbo Guide, a friendly local tourism assistant for Cebu, Philippines. "
@@ -88,8 +90,14 @@ def retrieve(question: str) -> dict:
     if dalan_router is not None:
         d = dalan_router.route(question)
         name = {"skip": "kb", "generate": "llm", "abstain": "fallback"}[d["action"]]
+        entry = d["entry"]
+        if name == "fallback" and NEAREST_TO_LLM and d["context"]:
+            # Not confident, but the question shares words with some topics: let the LLM answer from the
+            # closest ones instead of refusing. Only questions with no overlap at all are declined.
+            if float(dalan_router.lex.scores(dalan_router.norm(question)).max()) > 0:
+                name, entry = "llm-nearest", d["context"][0]
         qv = embed([question], is_query=True)[0] if embedder is not None else None
-        return dict(route=name, entry=d["entry"], score=d["p"], context=d["context"], qv=qv)
+        return dict(route=name, entry=entry, score=d["p"], context=d["context"], qv=qv)
     kw = kw_router.route(question)
     if embedder is None:
         return kw
@@ -128,27 +136,31 @@ def cache_store(question: str, value: dict, qv=None):
         sem_cache_vals.append(value)
 
 
-def build_messages(question: str, context: list[dict]):
+NEAREST_NOTE = ("These topics are only the closest matches and may not fully cover the question. "
+                "Answer the parts they cover, and say plainly what they do not cover.\n\n")
+
+
+def build_messages(question: str, context: list[dict], nearest=False):
     ctx = "\n\n".join(f"[{e['title']}]\n{e['answer']}" for e in context)
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": f"CONTEXT:\n{ctx}\n\nQUESTION: {question}"},
+        {"role": "user", "content": (NEAREST_NOTE if nearest else "") + f"CONTEXT:\n{ctx}\n\nQUESTION: {question}"},
     ]
 
 
-async def llm_complete(question: str, context: list[dict]) -> str:
+async def llm_complete(question: str, context: list[dict], nearest=False) -> str:
     async with httpx.AsyncClient(timeout=60) as client:
         r = await client.post(f"{LLM_BASE_URL}/chat/completions", json=dict(
-            model=LLM_MODEL, messages=build_messages(question, context),
+            model=LLM_MODEL, messages=build_messages(question, context, nearest),
             temperature=0.2, max_tokens=300))
         r.raise_for_status()
         return r.json()["choices"][0]["message"]["content"].strip()
 
 
-async def llm_stream(question: str, context: list[dict]):
+async def llm_stream(question: str, context: list[dict], nearest=False):
     async with httpx.AsyncClient(timeout=60) as client:
         async with client.stream("POST", f"{LLM_BASE_URL}/chat/completions", json=dict(
-                model=LLM_MODEL, messages=build_messages(question, context),
+                model=LLM_MODEL, messages=build_messages(question, context, nearest),
                 temperature=0.2, max_tokens=300, stream=True)) as r:
             async for line in r.aiter_lines():
                 if not line.startswith("data: ") or line.endswith("[DONE]"):
@@ -176,9 +188,9 @@ async def answer(question: str) -> dict:
     cached, kind = cache_lookup(question, qv)
     if cached:
         return {**cached, "route": f"cache-{kind}", "ms": round((time.perf_counter() - t0) * 1000, 2)}
-    if r["route"] == "llm":
+    if r["route"] in ("llm", "llm-nearest"):
         try:
-            text = await llm_complete(question, r["context"])
+            text = await llm_complete(question, r["context"], nearest=r["route"] == "llm-nearest")
         except Exception:
             text = r["entry"]["answer"]  # LLM down: degrade gracefully to best KB entry
             r["route"] = "kb-degraded"
@@ -202,9 +214,10 @@ async def chat_stream(body: Ask):
     """Streams tokens for the LLM route so the first words appear immediately."""
     r = retrieve(body.question)
     r.pop("qv", None)
-    if r["route"] != "llm":
+    if r["route"] not in ("llm", "llm-nearest"):
         return PlainTextResponse(r["entry"]["answer"])
-    return StreamingResponse(llm_stream(body.question, r["context"]), media_type="text/plain")
+    return StreamingResponse(llm_stream(body.question, r["context"], r["route"] == "llm-nearest"),
+                             media_type="text/plain")
 
 
 @app.get("/health")

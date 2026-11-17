@@ -225,10 +225,14 @@ Buses leave from the Cebu North Bus Terminal. Plan at least two days for any isl
 """)
 
 add("bantayan", "north", "Islands", "Bantayan Island",
-    ["bantayan", "santa fe", "sta fe", "hagnaya", "kota", "virgin island", "ogtong", "madridejos", "white sand"],
+    ["bantayan", "santa fe", "sta fe", "hagnaya", "kota", "virgin island", "ogtong", "madridejos", "white sand", "pamasahe", "plete", "fare"],
     ["How do I get to Bantayan Island?", "What to do in Bantayan?", "Is Bantayan worth it?"],
     """
 Getting there: bus from Cebu North Bus Terminal to Hagnaya Port, San Remigio (about 3 to 4 hours), then ferry to Santa Fe (about 1 hour). Several ferry trips run daily until late afternoon.
+Fares (one way, regular adult, checked November 2026; confirm before you go):
+- Bus Cebu North Bus Terminal to Hagnaya: about PHP 210 ordinary, PHP 260 aircon. Vans from SM City Cebu cost about the same.
+- Ferry Hagnaya to Santa Fe: about PHP 305 (Island Shipping) to PHP 384 (Super Shuttle Ferry), terminal fee included. Students, seniors, and PWD get discounts.
+- Total: roughly PHP 500 to 650 one way.
 What to do:
 - Swim at Kota Beach, Sugar Beach, and Paradise Beach.
 - Ogtong Cave pool in Santa Fe.
@@ -238,10 +242,14 @@ Buy dried fish and eggs before you leave. Holy Week is very crowded, so book ear
 """)
 
 add("malapascua", "north", "Islands", "Malapascua Island",
-    ["malapascua", "thresher", "shark", "monad", "shoal", "maya", "daanbantayan", "dive", "diving", "kalanggaman"],
+    ["malapascua", "thresher", "shark", "monad", "shoal", "maya", "daanbantayan", "dive", "diving", "kalanggaman", "pamasahe", "plete", "fare"],
     ["How do I get to Malapascua?", "Can I see thresher sharks?", "Diving in Malapascua"],
     """
 Getting there: bus from Cebu North Bus Terminal to Maya Port, Daanbantayan (about 4 to 5 hours), then a boat to Malapascua (about 30 to 45 minutes).
+Fares (one way, regular adult, checked November 2026; confirm before you go):
+- Bus Cebu North Bus Terminal to Maya Port: about PHP 258 ordinary, PHP 320 aircon.
+- Boat Maya to Malapascua: about PHP 200 per person when the boat fills up; a private boat is about PHP 2,000 for the whole boat.
+- Total: roughly PHP 460 to 520 one way.
 Highlights:
 - Thresher shark dives at Monad Shoal, at dawn. You need Open Water certification, and Advanced is recommended for the depth.
 - Bounty Beach and Langob Beach for swimming.
@@ -250,10 +258,13 @@ Bring cash and arrive at Maya port before mid-afternoon.
 """)
 
 add("camotes", "north", "Islands", "Camotes Islands",
-    ["camotes", "danao", "lake danao", "consuelo", "timubo", "cave", "santiago", "mangodlong", "pacijan", "poro", "busay falls"],
+    ["camotes", "danao", "lake danao", "consuelo", "timubo", "cave", "santiago", "mangodlong", "pacijan", "poro", "busay falls", "pamasahe", "plete", "fare"],
     ["How do I go to Camotes?", "What to see in Camotes Islands?"],
     """
 Getting there: bus or van to Danao City Port (about 1 to 1.5 hours from the city), then ferry to Consuelo, Camotes (about 2 hours).
+Fares (one way, regular adult, checked November 2026; confirm before you go):
+- Bus or van to Danao: ask at the terminal; it is a short, inexpensive ride.
+- Ferry Danao to Consuelo (Jomalia Shipping): about PHP 360 economy, PHP 400 aircon. Fuel surcharges can raise this.
 Highlights:
 - Lake Danao, the guitar-shaped lake, with bamboo rafts.
 - Timubo Cave and Bukilat Cave.
@@ -292,10 +303,12 @@ Buses leave from the Cebu South Bus Terminal. A loop takes 2 to 3 days.
 """)
 
 add("oslob", "south", "Attractions", "Oslob whale sharks",
-    ["oslob", "whale", "shark", "butanding", "tan-awan", "tanawan", "snorkel"],
+    ["oslob", "whale", "shark", "butanding", "tan-awan", "tanawan", "snorkel", "pamasahe", "plete", "fare"],
     ["How do I see the whale sharks in Oslob?", "How much is Oslob whale shark watching?", "Is Oslob ethical?"],
     """
 Getting there: bus from Cebu South Bus Terminal to Tan-awan, Oslob (about 3 to 4 hours). Leave by 4 or 5 am since viewing ends around noon.
+Fares (one way, regular adult, checked November 2026; confirm before you go):
+- Bus Cebu South Bus Terminal to Oslob: from about PHP 269 ordinary, PHP 330 aircon.
 Fees: roughly PHP 500 for locals and PHP 1,000 for foreigners for snorkeling (verify current rates).
 Rules: keep your distance, no touching, no sunscreen in the water, no flash.
 Note: the sharks are hand-fed, which marine biologists criticize because it changes their behavior. If you prefer wild encounters, consider Malapascua (thresher sharks) or Moalboal (turtles and sardines) instead.
@@ -322,10 +335,12 @@ Bring aqua shoes, a waterproof phone pouch, and go with an accredited guide. Avo
 """)
 
 add("moalboal", "south", "Attractions", "Moalboal sardine run and Pescador",
-    ["moalboal", "sardine", "sardines", "run", "turtle", "pescador", "panagsama", "white beach", "dive", "snorkel"],
+    ["moalboal", "sardine", "sardines", "run", "turtle", "pescador", "panagsama", "white beach", "dive", "snorkel", "pamasahe", "plete", "fare"],
     ["What to do in Moalboal?", "Where can I see the sardine run?", "How to go to Moalboal?"],
     """
 Getting there: bus from Cebu South Bus Terminal via Barili (about 3 hours).
+Fares (one way, regular adult, checked November 2026; confirm before you go):
+- Bus Cebu South Bus Terminal to Moalboal: from about PHP 172 ordinary, PHP 210 aircon (some trips charge up to PHP 250).
 Highlights:
 - Sardine run: millions of sardines right off Panagsama Beach, reachable by snorkeling from shore.
 - Sea turtles along the reef wall.
@@ -574,6 +589,7 @@ For international flights, check your destination's customs rules. Many countrie
 """)
 
 kb = dict(name="Sugbo Guide Cebu KB", verified=VERIFIED, entries=E, products=P)
-with open("kb.json", "w", encoding="utf-8") as f:
+from pathlib import Path  # noqa: E402
+with open(Path(__file__).parent / "kb.json", "w", encoding="utf-8") as f:
     json.dump(kb, f, ensure_ascii=False, indent=1)
 print(len(E), "entries,", len(P), "products")

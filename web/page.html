@@ -178,7 +178,7 @@ async function viaApi(q){
   const r = await fetch("chat", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({question:q}), signal:ctl.signal});
   clearTimeout(t); if (!r.ok) throw new Error(r.status);
   const o = await r.json();
-  const kind = o.route === "fallback" ? "no" : o.route === "llm" ? "ai" : o.route === "kb-degraded" ? "check" : "ok";
+  const kind = o.route === "fallback" ? "no" : o.route.startsWith("llm") ? "ai" : o.route === "kb-degraded" ? "check" : "ok";
   return {kind, title: kind === "no" ? "" : o.title, text: o.answer, ms: o.ms, rel: kind === "no" ? [] : (o.sources || []).filter(id => id !== o.entry_id).slice(0, 2)};
 }
 function viaBrowser(q){

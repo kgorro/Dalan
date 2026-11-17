@@ -56,6 +56,9 @@ Environment variables: ROUTER (dalan or hybrid), DALAN_EPS (skip error budget, d
 
 ## Updating content
 
+The paper's experiments use data/kb_paper.json, the knowledge base frozen at submission, so results/ always reproduces the reported numbers. kb/kb.json is the live knowledge base for the deployed bot and can change freely (for example, fares added in November 2026).
+
+
 Edit kb/build_kb.py and run it. Add new Cebuano or Tagalog words to dalan/lexicon.py. Add real user questions to data/build_queries.py and rerun the experiments. The browser prototype is rebuilt from web/page.html, web/router.js, and kb/kb.json:
 
     python web/build_page.py

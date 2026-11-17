@@ -32,7 +32,9 @@ from dalan.router import DALANRouter, bucket_of  # noqa: E402
 
 RES = ROOT / "results"
 RES.mkdir(exist_ok=True)
-KB = json.loads((ROOT / "kb" / "kb.json").read_text(encoding="utf-8"))
+# The paper's numbers come from the knowledge base as it was at submission, frozen in data/kb_paper.json.
+# kb/kb.json keeps improving for the deployed bot (fares, new topics) without changing these results.
+KB = json.loads((ROOT / "data" / "kb_paper.json").read_text(encoding="utf-8"))
 Q = [json.loads(l) for l in (ROOT / "data" / "queries.jsonl").read_text(encoding="utf-8").splitlines()]
 N = len(Q)
 LANGS = ["en", "ceb", "tl", "mix"]
